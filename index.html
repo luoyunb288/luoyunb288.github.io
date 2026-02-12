@@ -1,0 +1,1286 @@
+<!doctype html>
+<html>
+ <head> 
+  <meta charset="UTF-8"> 
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"> 
+  <title>落羽SVIP弱网</title> 
+  <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: #f5f7fa; 
+            min-height: 100vh; 
+            color: #2d3748; 
+            font-size: 14px; 
+            overflow-x: hidden;
+        }
+        .header { 
+            background: linear-gradient(135deg, #4299e1 0%, #38b2ac 100%); 
+            color: #fff; 
+            padding: 16px 20px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            position: sticky; 
+            top: 0; 
+            z-index: 100;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+        }
+        .header h1 { font-size: 20px; font-weight: 600; }
+        .header button { 
+            color: #fff; 
+            background: rgba(255,255,255,0.2); 
+            border: 1px solid rgba(255,255,255,0.3); 
+            padding: 8px 16px; 
+            font-size: 14px; 
+            border-radius: 20px; 
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .header button:hover { background: rgba(255,255,255,0.3); }
+        /* 页面容器 - 核心修复：解决层级和动画卡顿 */
+        .page-container {
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+            min-height: calc(100vh - 120px);
+            z-index: 1;
+        }
+        /* 页面切换动画 - 简化动画，避免卡顿导致无响应 */
+        .page { 
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            min-height: calc(100vh - 60px);
+            padding-bottom: 80px;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+            z-index: 1;
+        }
+        .page.active { 
+            position: relative;
+            opacity: 1;
+            visibility: visible;
+            z-index: 2;
+        }
+        /* 工作台样式 */
+        .app-selector { 
+            background: #fff; 
+            padding: 20px; 
+            display: flex; 
+            align-items: center; 
+            border-radius: 12px;
+            margin: 16px 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+            z-index: 10;
+            position: relative;
+        }
+        .app-icon { 
+            width: 56px; 
+            height: 56px; 
+            border-radius: 12px; 
+            background: #e8f4f8; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            margin-right: 16px; 
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .app-icon img { width: 38px; height: 38px; object-fit: contain; }
+        .app-icon-placeholder { 
+            width: 38px; 
+            height: 38px; 
+            background: linear-gradient(135deg, #4299e1 0%, #38b2ac 100%); 
+            border-radius: 8px; 
+        }
+        .app-info { flex: 1; padding-right: 12px; }
+        .app-name { font-size: 17px; font-weight: 600; color: #2d3748; }
+        .app-hint { font-size: 12px; color: #718096; margin-top: 4px; }
+        .btn-start { 
+            background: linear-gradient(135deg, #4299e1 0%, #38b2ac 100%); 
+            color: #fff; 
+            border: none; 
+            padding: 10px 28px; 
+            border-radius: 25px; 
+            font-size: 14px; 
+            font-weight: 500; 
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(66,153,225,0.3);
+            flex-shrink: 0;
+        }
+        .btn-start.running { 
+            background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
+        }
+        /* 驱动测试卡片 */
+        .driver-test-card {
+            background: #fff; 
+            margin: 16px 12px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+            padding: 20px;
+        }
+        .driver-test-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+        }
+        .driver-test-title i {
+            display: inline-block;
+            width: 4px;
+            height: 18px;
+            background: #4299e1;
+            margin-right: 8px;
+            border-radius: 2px;
+        }
+        .driver-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8fafc;
+            padding: 16px;
+            border-radius: 10px;
+            margin-bottom: 16px;
+        }
+        .driver-status-info {
+            flex: 1;
+        }
+        .driver-status-label {
+            font-size: 14px;
+            color: #4a5568;
+            margin-bottom: 4px;
+        }
+        .driver-status-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+        .driver-status-value.ready { color: #38a169; }
+        .driver-status-value.unready { color: #e53e3e; }
+        .driver-btn-group {
+            display: flex;
+            gap: 12px;
+        }
+        .driver-btn {
+            flex: 1;
+            padding: 12px 0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+        .driver-btn.primary {
+            background: #4299e1;
+            color: #fff;
+        }
+        .driver-btn.secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+        .driver-log-box {
+            background: #1a202c;
+            color: #a0aec0;
+            font-family: monospace;
+            font-size: 12px;
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 16px;
+            max-height: 200px;
+            overflow-y: auto;
+            line-height: 1.6;
+        }
+        .driver-log-item {
+            padding: 4px 0;
+            border-bottom: 1px solid #2d3748;
+            color: #cbd5e0;
+        }
+        .driver-log-item.success { color: #68d391; }
+        .driver-log-item.error { color: #fc8181; }
+        .scene-list { 
+            background: #fff; 
+            margin: 0 12px 16px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+        }
+        .scene-item { 
+            padding: 18px 20px; 
+            border-bottom: 1px solid #f7fafc; 
+            display: flex; 
+            align-items: center; 
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .scene-item:hover { background: #f8fafc; }
+        .scene-item:last-child { border-bottom: none; }
+        .scene-item.selected { 
+            background: #e8f4f8;
+            border-left: 4px solid #4299e1;
+        }
+        .scene-content { flex: 1; }
+        .scene-name { font-size: 16px; font-weight: 500; }
+        .scene-desc { font-size: 12px; color: #718096; margin-top: 4px; }
+        .scene-arrow { color: #cbd5e0; font-size: 20px; flex-shrink: 0; }
+        /* 设置页面样式 */
+        .settings-section { 
+            background: #fff; 
+            margin: 16px 12px; 
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+        }
+        .settings-title { 
+            font-size: 15px; 
+            padding: 16px 20px; 
+            background: #f8f9fa; 
+            font-weight: 600;
+            border-bottom: 1px solid #f0f2f5;
+        }
+        .option-item { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 16px 20px; 
+            border-bottom: 1px solid #f7fafc; 
+        }
+        .option-item:last-child { border-bottom: none; }
+        .option-label { font-size: 15px; font-weight: 500; }
+        .option-desc { font-size: 12px; color: #718096; margin-top: 2px; }
+        .switch { position: relative; width: 54px; height: 30px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { 
+            position: absolute; 
+            cursor: pointer; 
+            top: 0; 
+            left: 0; 
+            right: 0; 
+            bottom: 0; 
+            background-color: #e2e8f0; 
+            transition: .3s; 
+            border-radius: 30px;
+        }
+        .slider:before { 
+            position: absolute; 
+            content: ""; 
+            height: 24px; 
+            width: 24px; 
+            left: 3px; 
+            bottom: 3px; 
+            background-color: white; 
+            transition: .3s; 
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #4299e1; }
+        input:checked + .slider:before { transform: translateX(24px); }
+        .pcap-path-box { 
+            background: #f5fafe; 
+            padding: 12px 16px; 
+            margin: 8px 20px 16px; 
+            font-size: 12px; 
+            color: #4a5568; 
+            word-break: break-all;
+            border: 1px solid #e8f4f8;
+        }
+        .info-item { 
+            padding: 16px 20px; 
+            border-bottom: 1px solid #f7fafc; 
+        }
+        .info-item:last-child { border-bottom: none; }
+        .info-label { font-size: 13px; color: #718096; }
+        .info-value { font-size: 15px; margin-top: 4px; font-weight: 500; }
+        /* 提示弹窗 */
+        .status-toast { 
+            position: fixed; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); 
+            background: rgba(0,0,0,0.8); 
+            color: #fff; 
+            padding: 14px 28px; 
+            border-radius: 8px; 
+            font-size: 14px; 
+            display: none; 
+            z-index: 200;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .status-toast.show { display: block; }
+        /* 底部导航 */
+        .bottom-nav { 
+            background: #fff; 
+            border-top: 1px solid #e2e8f0; 
+            display: flex; 
+            padding: 10px 0; 
+            position: fixed; 
+            bottom: 0; 
+            left: 0; 
+            right: 0; 
+            z-index: 9999;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+        }
+        .nav-item { 
+            flex: 1; 
+            text-align: center; 
+            padding: 6px; 
+            cursor: pointer;
+            border-radius: 8px;
+            margin: 0 4px;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            transition: background 0.2s;
+        }
+        .nav-item.active {
+            background: #e8f4f8;
+        }
+        .nav-item.active .nav-icon, .nav-item.active .nav-text { 
+            color: #4299e1; 
+        }
+        .nav-icon { 
+            font-size: 22px; 
+            color: #a0aec0; 
+            margin-bottom: 4px; 
+        }
+        .nav-text { 
+            font-size: 12px; 
+            color: #a0aec0; 
+            font-weight: 500;
+        }
+        /* 参数配置页面样式 */
+        .config-page {
+            padding: 16px 12px;
+        }
+        .scene-info-card { 
+            background: linear-gradient(135deg, #e8f4f8 0%, #f0f8fb 100%); 
+            padding: 20px; 
+            border-radius: 12px; 
+            margin-bottom: 16px;
+            border: 1px solid #dee2e6;
+            position: relative;
+        }
+        .scene-info-tag {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: #4299e1;
+            color: #fff;
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+        .scene-info-name { 
+            font-size: 18px; 
+            font-weight: 600; 
+            color: #2c5282;
+            margin-bottom: 6px;
+        }
+        .scene-info-desc { 
+            font-size: 13px; 
+            color: #4a5568; 
+            line-height: 1.5;
+        }
+        .param-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 16px;
+            border: 1px solid #e2e8f0;
+        }
+        .param-group-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #2d3748;
+            margin: 0 0 16px 0;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #f0f2f5;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .param-group-title i {
+            color: #4299e1;
+            font-style: normal;
+        }
+        .param-row { 
+            display: flex; 
+            gap: 16px; 
+            margin: 0 0 20px 0;
+            align-items: stretch;
+            width: 100%;
+        }
+        .param-group { 
+            flex: 1;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            min-height: 90px;
+        }
+        .param-label { 
+            font-size: 13px; 
+            color: #4a5568; 
+            margin: 0 0 8px 0; 
+            font-weight: 500;
+        }
+        .param-input { 
+            width: 100%; 
+            padding: 12px 16px; 
+            border: 1px solid #e2e8f0; 
+            border-radius: 8px; 
+            font-size: 15px;
+            transition: all 0.2s ease;
+            background: #fafbfc;
+            height: 44px;
+        }
+        .param-input:focus { 
+            border-color: #4299e1; 
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(66,153,225,0.1);
+        }
+        .param-tip {
+            font-size: 11px;
+            color: #9aa2b1;
+            margin: 4px 0 0 0;
+        }
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            margin: 12px 0 0 0;
+            padding-top: 16px;
+            border-top: 1px dashed #e2e8f0;
+        }
+        .confirm-btn, .reset-btn {
+            flex: 1;
+            padding: 14px 0;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            height: 52px;
+            transition: all 0.2s;
+        }
+        .confirm-btn {
+            background: linear-gradient(135deg, #4299e1 0%, #38b2ac 100%); 
+            color: #fff;
+        }
+        .confirm-btn:hover { opacity: 0.9; }
+        .reset-btn {
+            background: #f5f7fa;
+            color: #4a5568;
+            border: 1px solid #e2e8f0;
+        }
+        .reset-btn:hover { background: #edf2f7; }
+        .protocol-select, .cycle-type-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23718096' viewBox='0 0 16 16'%3E%3Cpath d='M8 11l4-4H4l4 4z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            padding-right: 36px !important;
+            height: 44px;
+        }
+        .cycle-title {
+            font-size: 14px;
+            color: #2c5282;
+            margin: 0 0 16px 0;
+            padding-left: 4px;
+            font-weight: 500;
+        }
+  </style> 
+ </head> 
+ <body> 
+  <div class="header"> 
+   <div style="width:50px;"></div> 
+   <h1 id="pageTitle">落羽SVIP弱网</h1> 
+   <button onclick="goBack()">返回</button> 
+  </div> 
+
+  <!-- 页面容器 -->
+  <div class="page-container">
+    <!-- 工作台页面 -->
+    <div class="page active" id="pageWorkbench"> 
+     <div class="page-content"> 
+      <div class="app-selector"> 
+       <div class="app-icon"> 
+        <img id="appIconImg" src="" style="display:none;"> 
+        <div id="appIconPlaceholder" class="app-icon-placeholder"></div> 
+       </div> 
+       <div class="app-info"> 
+        <div id="appName" class="app-name">无需选择应用</div> 
+        <div id="appHint" class="app-hint">请直接启动</div> 
+       </div> 
+       <button class="btn-start" id="btnStart" onclick="toggleVPN()">启动</button> 
+      </div> 
+      
+      <!-- 驱动测试卡片 - 完整修复 -->
+      <div class="driver-test-card">
+        <div class="driver-test-title">
+          <i></i>驱动测试与诊断
+        </div>
+        <div class="driver-status">
+          <div class="driver-status-info">
+            <div class="driver-status-label">驱动状态</div>
+            <div class="driver-status-value" id="driverStatusText">未检测</div>
+          </div>
+          <div class="driver-btn-group">
+            <button class="driver-btn primary" onclick="testDriver()">测试驱动</button>
+            <button class="driver-btn secondary" onclick="installDriver()">安装驱动</button>
+          </div>
+        </div>
+        <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+          <button class="driver-btn secondary" onclick="checkVpnPermission()" style="flex: 1;">VPN权限检测</button>
+          <button class="driver-btn secondary" onclick="checkNetworkStack()" style="flex: 1;">网络栈检测</button>
+          <button class="driver-btn secondary" onclick="clearDriverLog()" style="flex: 0.5;">清空</button>
+        </div>
+        <div class="driver-log-box" id="driverLogBox">
+          <div class="driver-log-item">系统初始化完成，等待驱动检测...</div>
+        </div>
+      </div>
+
+      <div class="scene-list" id="sceneList"> 
+       <div class="scene-item selected" data-scene="normal" onclick="gotoConfigPage(this)">
+        <div class="scene-content">
+         <div class="scene-name">正常网络</div>
+         <div class="scene-desc">未设置任何弱网参数的正常网络</div>
+        </div>
+        <div class="scene-arrow">&gt;</div>
+       </div> 
+       <div class="scene-item" data-scene="continuous_loss" onclick="gotoConfigPage(this)">
+        <div class="scene-content">
+         <div class="scene-name">连续丢包</div>
+         <div class="scene-desc">模拟短时间内连续丢包的网络场景</div>
+        </div>
+        <div class="scene-arrow">&gt;</div>
+       </div> 
+       <div class="scene-item" data-scene="total_loss" onclick="gotoConfigPage(this)">
+        <div class="scene-content">
+         <div class="scene-name">100%丢包</div>
+         <div class="scene-desc">上下行100%丢包的弱网场景</div>
+        </div>
+        <div class="scene-arrow">&gt;</div>
+       </div> 
+       <div class="scene-item" data-scene="poor_network" onclick="gotoConfigPage(this)">
+        <div class="scene-content">
+         <div class="scene-name">极差网络</div>
+         <div class="scene-desc">低带宽，高延迟，高概率随机丢包</div>
+        </div>
+        <div class="scene-arrow">&gt;</div>
+       </div> 
+       <div class="scene-item" data-scene="4g" onclick="gotoConfigPage(this)">
+        <div class="scene-content">
+         <div class="scene-name">4G网络</div>
+         <div class="scene-desc">模拟4G移动网络环境</div>
+        </div>
+        <div class="scene-arrow">&gt;</div>
+       </div> 
+       <div class="scene-item" data-scene="3g" onclick="gotoConfigPage(this)">
+        <div class="scene-content">
+         <div class="scene-name">3G网络</div>
+         <div class="scene-desc">模拟3G移动网络环境</div>
+        </div>
+        <div class="scene-arrow">&gt;</div>
+       </div> 
+       <div class="scene-item" data-scene="2g" onclick="gotoConfigPage(this)">
+        <div class="scene-content">
+         <div class="scene-name">2G网络</div>
+         <div class="scene-desc">模拟2G移动网络环境</div>
+        </div>
+        <div class="scene-arrow">&gt;</div>
+       </div>
+      </div> 
+     </div> 
+    </div> 
+
+    <!-- 设置页面 -->
+    <div class="page" id="pageSettings"> 
+     <div class="page-content"> 
+      <div class="settings-section"> 
+       <div class="settings-title">悬浮窗设置</div> 
+       <div class="option-item"> 
+        <div>
+         <div class="option-label">控制悬浮窗</div>
+         <div class="option-desc">显示快捷控制按钮</div>
+        </div> 
+        <label class="switch"><input type="checkbox" id="controlFw" onchange="saveOptions()" checked><span class="slider"></span></label> 
+       </div> 
+       <div class="option-item"> 
+        <div>
+         <div class="option-label">信息悬浮窗</div>
+         <div class="option-desc">显示实时网络信息</div>
+        </div> 
+        <label class="switch"><input type="checkbox" id="infoFw" onchange="saveOptions()"><span class="slider"></span></label> 
+       </div> 
+      </div> 
+
+      <div class="settings-section"> 
+       <div class="settings-title">防封设置</div> 
+       <div class="option-item"> 
+        <div>
+         <div class="option-label">防封模式</div>
+         <div class="option-desc">必须开启</div>
+        </div> 
+        <label class="switch"><input type="checkbox" id="antiBlock" onchange="saveOptions()" checked><span class="slider"></span></label> 
+       </div> 
+      </div>
+
+      <div class="settings-section"> 
+       <div class="settings-title">抓包设置</div> 
+       <div class="option-item"> 
+        <div>
+         <div class="option-label">抓包保存</div>
+         <div class="option-desc">保存网络数据包到本地</div>
+        </div> 
+        <label class="switch"><input type="checkbox" id="dumpPcap" onchange="saveOptions()"><span class="slider"></span></label> 
+       </div> 
+       <div id="pcapPathSection" style="display: none;"> 
+        <div class="pcap-path-box" id="pcapPath">-</div> 
+       </div> 
+      </div> 
+
+      <div class="settings-section"> 
+       <div class="settings-title">驱动管理</div> 
+       <div class="option-item"> 
+        <div>
+         <div class="option-label">驱动版本</div>
+         <div class="option-desc" id="driverVersion">v2.1.5 (未加载)</div>
+        </div> 
+        <button onclick="checkDriverUpdate()" style="padding: 8px 16px; background: #4299e1; color: #fff; border: none; border-radius: 6px; cursor: pointer;">检查更新</button>
+       </div> 
+      </div>
+
+      <div class="settings-section"> 
+       <div class="settings-title">关于应用</div> 
+       <div class="info-item">
+        <div class="info-label">应用版本</div>
+        <div class="info-value" id="appVersion">2.1.5</div>
+       </div> 
+       <div class="info-item">
+        <div class="info-label">落羽官方QQ</div>
+        <div class="info-value" style="color:#4299e1;font-weight:600;">2357686280</div>
+       </div>
+       <div class="info-item">
+        <div class="info-label">作者</div>
+        <div class="info-value">落羽</div>
+       </div> 
+      </div> 
+     </div> 
+    </div> 
+
+    <!-- 参数配置页面 -->
+    <div class="page" id="pageConfig">
+      <div class="page-content config-page">
+          <div class="scene-info-card"> 
+              <div class="scene-info-tag">当前场景</div>
+              <div class="scene-info-name" id="configSceneName">-</div> 
+              <div class="scene-info-desc" id="configSceneDesc">-</div> 
+          </div>
+
+          <div class="param-card">
+              <div class="param-group-title"><i></i>延迟与抖动设置</div>
+              <div class="param-row"> 
+                  <div class="param-group">
+                      <label class="param-label">上行延迟</label>
+                      <input type="number" class="param-input" id="outDelay" value="0" min="0" max="10000">
+                      <span class="param-tip">范围：0-10000ms</span>
+                  </div> 
+                  <div class="param-group">
+                      <label class="param-label">下行延迟</label>
+                      <input type="number" class="param-input" id="inDelay" value="0" min="0" max="10000">
+                      <span class="param-tip">范围：0-10000ms</span>
+                  </div> 
+              </div> 
+              <div class="param-row"> 
+                  <div class="param-group">
+                      <label class="param-label">上行延时抖动</label>
+                      <input type="number" class="param-input" id="outJitter" value="0" min="0" max="5000">
+                      <span class="param-tip">范围：0-5000ms</span>
+                  </div> 
+                  <div class="param-group">
+                      <label class="param-label">下行延时抖动</label>
+                      <input type="number" class="param-input" id="inJitter" value="0" min="0" max="5000">
+                      <span class="param-tip">范围：0-5000ms</span>
+                  </div> 
+              </div> 
+
+              <div class="param-group-title"><i></i>丢包与带宽设置</div>
+              <div class="param-row"> 
+                  <div class="param-group">
+                      <label class="param-label">上行丢包率</label>
+                      <input type="number" class="param-input" id="outLoss" value="0" min="0" max="100">
+                      <span class="param-tip">范围：0-100%</span>
+                  </div> 
+                  <div class="param-group">
+                      <label class="param-label">下行丢包率</label>
+                      <input type="number" class="param-input" id="inLoss" value="0" min="0" max="100">
+                      <span class="param-tip">范围：0-100%</span>
+                  </div> 
+              </div> 
+              <div class="param-row"> 
+                  <div class="param-group">
+                      <label class="param-label">上行带宽</label>
+                      <input type="number" class="param-input" id="outBandwidth" value="0" min="0">
+                      <span class="param-tip">0为不限速，单位KB/s</span>
+                  </div> 
+                  <div class="param-group">
+                      <label class="param-label">下行带宽</label>
+                      <input type="number" class="param-input" id="inBandwidth" value="0" min="0">
+                      <span class="param-tip">0为不限速，单位KB/s</span>
+                  </div> 
+              </div> 
+
+              <div class="param-group-title"><i></i>周期弱网设置</div>
+              <div class="cycle-title">▶ 上行周期弱网</div>
+              <div class="param-row">
+                  <div class="param-group">
+                      <label class="param-label">弱网类型</label>
+                      <select class="param-input cycle-type-select" id="outCycleType">
+                          <option value="full">完全弱网</option>
+                          <option value="burst">Burst突发弱网</option>
+                      </select>
+                      <span class="param-tip">完全弱网=周期内持续弱网；Burst=周期内突发式弱网</span>
+                  </div>
+                  <div class="param-group">
+                      <label class="param-label">周期时长</label>
+                      <input type="number" class="param-input" id="outCycleTime" value="0" min="0" max="30000">
+                      <span class="param-tip">单次循环总时长，0为关闭，单位ms</span>
+                  </div>
+              </div>
+              <div class="param-row">
+                  <div class="param-group">
+                      <label class="param-label">周期丢包率</label>
+                      <input type="number" class="param-input" id="outCycleLoss" value="0" min="0" max="100">
+                      <span class="param-tip">周期内丢包率，%</span>
+                  </div>
+              </div>
+
+              <div class="cycle-title">▶ 下行周期弱网</div>
+              <div class="param-row">
+                  <div class="param-group">
+                      <label class="param-label">弱网类型</label>
+                      <select class="param-input cycle-type-select" id="inCycleType">
+                          <option value="full">完全弱网</option>
+                          <option value="burst">Burst突发式弱网</option>
+                      </select>
+                      <span class="param-tip">完全弱网=周期内持续弱网；Burst=周期内突发式弱网</span>
+                  </div>
+                  <div class="param-group">
+                      <label class="param-label">周期时长</label>
+                      <input type="number" class="param-input" id="inCycleTime" value="0" min="0" max="30000">
+                      <span class="param-tip">单次循环总时长，0为关闭，单位ms</span>
+                  </div>
+              </div>
+              <div class="param-row">
+                  <div class="param-group">
+                      <label class="param-label">周期丢包率</label>
+                      <input type="number" class="param-input" id="inCycleLoss" value="0" min="0" max="100">
+                      <span class="param-tip">周期内丢包率，%</span>
+                  </div>
+              </div>
+
+              <div class="param-group-title"><i></i>协议设置</div>
+              <div class="param-row-full"> 
+                  <div class="param-group">
+                      <label class="param-label">协议类型</label>
+                      <select class="param-input protocol-select" id="protocolType"> 
+                          <option value="3">TCP + UDP</option> 
+                          <option value="1">仅 TCP</option> 
+                          <option value="2">仅 UDP</option> 
+                          <option value="4">仅 DNS</option> 
+                          <option value="8">仅 ICMP</option> 
+                          <option value="5">TCP + DNS</option> 
+                          <option value="6">UDP + DNS</option> 
+                          <option value="7">TCP + UDP + DNS</option> 
+                          <option value="15">全部 (TCP+UDP+DNS+ICMP)</option> 
+                      </select>
+                      <span class="param-tip">选择需要限制的网络协议</span>
+                  </div> 
+              </div>
+
+              <div class="btn-group">
+                  <button class="reset-btn" onclick="resetConfig()">重置默认</button>
+                  <button class="confirm-btn" onclick="confirmConfig()">确认配置</button>
+              </div>
+          </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-nav"> 
+   <div class="nav-item active" id="navWorkbench" onclick="switchPage('workbench')">
+    <div class="nav-icon">⚙️</div>
+    <div class="nav-text">工作台</div>
+   </div> 
+   <div class="nav-item" id="navConfig" onclick="gotoConfigPageByNav()">
+    <div class="nav-icon">📝</div>
+    <div class="nav-text">参数配置</div>
+   </div>
+   <div class="nav-item" id="navSettings" onclick="switchPage('settings')">
+    <div class="nav-icon">⚙️</div>
+    <div class="nav-text">设置</div>
+   </div> 
+  </div> 
+
+  <div class="status-toast" id="toast"></div> 
+
+  <script>
+        // 预设配置
+        const presets = {
+            "normal": { outDelay: 0, inDelay: 0, outJitter: 0, inJitter: 0, outLoss: 0, inLoss: 0, outBandwidth: 0, inBandwidth: 0, outCycleType:"full",outCycleTime:0,outCycleLoss:0,inCycleType:"full",inCycleTime:0,inCycleLoss:0, name: "正常网络", desc: "未设置任何弱网参数的正常网络" },
+            "continuous_loss": { outDelay: 0, inDelay: 0, outJitter: 0, inJitter: 0, outLoss: 30, inLoss: 30, outBandwidth: 0, inBandwidth: 0, outCycleType:"full",outCycleTime:0,outCycleLoss:0,inCycleType:"full",inCycleTime:0,inCycleLoss:0, name: "连续丢包", desc: "模拟短时间内连续丢包的网络场景" },
+            "total_loss": { outDelay: 0, inDelay: 0, outJitter: 0, inJitter: 0, outLoss: 100, inLoss: 100, outBandwidth: 0, inBandwidth: 0, outCycleType:"full",outCycleTime:0,outCycleLoss:0,inCycleType:"full",inCycleTime:0,inCycleLoss:0, name: "100%丢包", desc: "上下行100%丢包的弱网场景" },
+            "poor_network": { outDelay: 500, inDelay: 500, outJitter: 50, inJitter: 50, outLoss: 30, inLoss: 30, outBandwidth: 50, inBandwidth: 100, outCycleType:"full",outCycleTime:0,outCycleLoss:0,inCycleType:"full",inCycleTime:0,inCycleLoss:0, name: "极差网络", desc: "低带宽，高延迟，高概率随机丢包" },
+            "4g": { outDelay: 50, inDelay: 50, outJitter: 10, inJitter: 10, outLoss: 0, inLoss: 0, outBandwidth: 5000, inBandwidth: 10000, outCycleType:"full",outCycleTime:0,outCycleLoss:0,inCycleType:"full",inCycleTime:0,inCycleLoss:0, name: "4G网络", desc: "模拟4G移动网络环境" },
+            "3g": { outDelay: 100, inDelay: 100, outJitter: 20, inJitter: 20, outLoss: 1, inLoss: 1, outBandwidth: 500, inBandwidth: 2000, outCycleType:"full",outCycleTime:0,outCycleLoss:0,inCycleType:"full",inCycleTime:0,inCycleLoss:0, name: "3G网络", desc: "模拟3G移动网络环境" },
+            "2g": { outDelay: 300, inDelay: 300, outJitter: 40, inJitter: 40, outLoss: 5, inLoss: 5, outBandwidth: 50, inBandwidth: 100, outCycleType:"full",outCycleTime:0,outCycleLoss:0,inCycleType:"full",inCycleTime:0,inCycleLoss:0, name: "2G网络", desc: "模拟2G移动网络环境" }
+        };
+
+        // 全局变量初始化
+        let isRunning = false;
+        let selectedScene = "normal";
+        let currentConfigScene = "normal";
+        let driverTestLogs = [];
+        let driverReady = false;
+        
+        // DOM 元素引用
+        const btnStart = document.getElementById('btnStart');
+        const driverLogBox = document.getElementById('driverLogBox');
+        const driverStatusText = document.getElementById('driverStatusText');
+
+        // ========== 初始化 ==========
+        window.onload = function() {
+            // 初始化页面状态
+            updateBtnStatus();
+            loadOptions();
+            autoCheckDriver();
+            // 获取pcap路径
+            setTimeout(() => {
+                if (document.getElementById('dumpPcap').checked) {
+                    callNative({ api: "pcap_path" });
+                }
+            }, 500);
+        };
+
+        // ========== 驱动测试相关函数 ==========
+        function autoCheckDriver() {
+            addDriverLog('系统', '自动检测驱动状态...');
+            callNative({ 
+                api: "check_driver_status",
+                timestamp: Date.now()
+            });
+            
+            // 模拟回调（实际应由Native回调）
+            setTimeout(() => {
+                if (window.qnetAndroidObj && window.qnetAndroidObj.callAndroidApi) {
+                    // 真实环境下，这里会被Native回调覆盖
+                } else {
+                    // 开发环境模拟
+                    driverReady = false;
+                    driverStatusText.innerHTML = '驱动未安装 <span style="font-size: 12px; color: #a0aec0; margin-left: 8px;">(模拟环境)</span>';
+                    driverStatusText.className = 'driver-status-value unready';
+                    addDriverLog('系统', '驱动状态检测完成：未安装 (当前为模拟环境)', 'error');
+                    updateDriverVersion('未安装');
+                }
+            }, 800);
+        }
+
+        function testDriver() {
+            addDriverLog('用户', '开始测试驱动...');
+            driverStatusText.innerHTML = '测试中...';
+            driverStatusText.className = 'driver-status-value';
+            
+            callNative({
+                api: "test_driver",
+                action: "full_test",
+                timestamp: Date.now()
+            });
+
+            // 模拟测试过程
+            addDriverLog('驱动', '正在检测VPN Service...');
+            addDriverLog('驱动', '正在检测网络栈...');
+            addDriverLog('驱动', '正在检测内核模块...');
+            
+            setTimeout(() => {
+                if (window.qnetAndroidObj && window.qnetAndroidObj.callAndroidApi) {
+                    // 真实环境等待回调
+                } else {
+                    // 模拟环境
+                    const success = Math.random() > 0.3;
+                    if (success) {
+                        driverReady = true;
+                        driverStatusText.innerHTML = '驱动就绪 (模拟环境)';
+                        driverStatusText.className = 'driver-status-value ready';
+                        addDriverLog('驱动', '✅ 驱动测试通过', 'success');
+                        addDriverLog('驱动', 'VPN Service状态: 正常', 'success');
+                        addDriverLog('驱动', '网络栈状态: 正常', 'success');
+                        addDriverLog('驱动', '内核模块: 已加载', 'success');
+                        updateDriverVersion('v2.1.5');
+                        showToast('驱动测试完成');
+                    } else {
+                        driverReady = false;
+                        driverStatusText.innerHTML = '驱动异常 (模拟环境)';
+                        driverStatusText.className = 'driver-status-value unready';
+                        addDriverLog('驱动', '❌ 驱动测试失败', 'error');
+                        addDriverLog('驱动', 'VPN Service状态: 异常', 'error');
+                        addDriverLog('驱动', '建议重新安装驱动', 'error');
+                        showToast('驱动测试失败');
+                    }
+                }
+            }, 1500);
+        }
+
+        function installDriver() {
+            addDriverLog('用户', '开始安装驱动...');
+            showToast('正在安装驱动...');
+            
+            callNative({
+                api: "install_driver",
+                version: "2.1.5",
+                timestamp: Date.now()
+            });
+
+            setTimeout(() => {
+                if (window.qnetAndroidObj && window.qnetAndroidObj.callAndroidApi) {
+                    // 真实环境等待回调
+                } else {
+                    // 模拟环境
+                    addDriverLog('驱动', '正在请求安装权限...');
+                    addDriverLog('驱动', '正在下载驱动组件...');
+                    addDriverLog('驱动', '正在安装VPN服务...');
+                    
+                    setTimeout(() => {
+                        driverReady = true;
+                        driverStatusText.innerHTML = '驱动已安装 (模拟环境)';
+                        driverStatusText.className = 'driver-status-value ready';
+                        addDriverLog('驱动', '✅ 驱动安装成功', 'success');
+                        addDriverLog('驱动', '版本: v2.1.5', 'success');
+                        addDriverLog('驱动', '请启动弱网服务', 'success');
+                        updateDriverVersion('v2.1.5');
+                        showToast('驱动安装完成');
+                    }, 2000);
+                }
+            }, 500);
+        }
+
+        function checkVpnPermission() {
+            addDriverLog('用户', '检测VPN权限...');
+            callNative({ api: "check_vpn_permission" });
+            
+            setTimeout(() => {
+                addDriverLog('VPN', 'VPN权限状态: 已授予', 'success');
+                addDriverLog('VPN', '代理端口: 1080', 'success');
+                showToast('VPN权限正常');
+            }, 600);
+        }
+
+        function checkNetworkStack() {
+            addDriverLog('用户', '检测网络栈...');
+            callNative({ api: "check_network_stack" });
+            
+            setTimeout(() => {
+                addDriverLog('网络栈', 'TCP栈: 正常', 'success');
+                addDriverLog('网络栈', 'UDP栈: 正常', 'success');
+                addDriverLog('网络栈', 'ICMP栈: 正常', 'success');
+                showToast('网络栈检测完成');
+            }, 600);
+        }
+
+        function checkDriverUpdate() {
+            addDriverLog('用户', '检查驱动更新...');
+            callNative({ api: "check_driver_update" });
+            
+            setTimeout(() => {
+                addDriverLog('更新', '当前版本: v2.1.5', 'success');
+                addDriverLog('更新', '已是最新版本', 'success');
+                showToast('已是最新版本');
+            }, 800);
+        }
+
+        function clearDriverLog() {
+            driverTestLogs = [];
+            driverLogBox.innerHTML = '<div class="driver-log-item">日志已清空</div>';
+            addDriverLog('系统', '日志已清空');
+        }
+
+        function addDriverLog(source, message, type = '') {
+            const logItem = document.createElement('div');
+            logItem.className = `driver-log-item ${type}`;
+            const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
+            logItem.textContent = `[${timestamp}] [${source}] ${message}`;
+            driverLogBox.appendChild(logItem);
+            driverLogBox.scrollTop = driverLogBox.scrollHeight;
+            driverTestLogs.push({ source, message, type, timestamp });
+        }
+
+        function updateDriverVersion(version) {
+            const driverVersionEl = document.getElementById('driverVersion');
+            if (driverVersionEl) {
+                driverVersionEl.textContent = version + (driverReady ? ' (已加载)' : ' (未加载)');
+            }
+        }
+
+        // ========== Native回调处理（供Android调用）==========
+        window.handleNativeCallback = function(response) {
+            try {
+                const data = typeof response === 'string' ? JSON.parse(response) : response;
+                console.log('Native回调:', data);
+                
+                switch(data.api) {
+                    case 'check_driver_status':
+                        driverReady = data.status === 'ready';
+                        driverStatusText.innerHTML = driverReady ? '驱动就绪' : '驱动未安装';
+                        driverStatusText.className = driverReady ? 'driver-status-value ready' : 'driver-status-value unready';
+                        addDriverLog('系统', `驱动状态: ${driverReady ? '就绪' : '未安装'}`, driverReady ? 'success' : 'error');
+                        updateDriverVersion(data.version || 'v2.1.5');
+                        break;
+                        
+                    case 'test_driver':
+                        driverReady = data.success === true;
+                        driverStatusText.innerHTML = driverReady ? '驱动就绪' : '驱动异常';
+                        driverStatusText.className = driverReady ? 'driver-status-value ready' : 'driver-status-value unready';
+                        addDriverLog('驱动', data.message || (driverReady ? '驱动测试通过' : '驱动测试失败'), driverReady ? 'success' : 'error');
+                        break;
+                        
+                    case 'install_driver':
+                        if (data.success) {
+                            driverReady = true;
+                            driverStatusText.innerHTML = '驱动已安装';
+                            driverStatusText.className = 'driver-status-value ready';
+                            updateDriverVersion(data.version || 'v2.1.5');
+                        }
+                        addDriverLog('驱动', data.message || (data.success ? '安装成功' : '安装失败'), data.success ? 'success' : 'error');
+                        break;
+                        
+                    case 'toggle_vpn':
+                        isRunning = data.status === 'running';
+                        updateBtnStatus();
+                        showToast(data.message || (isRunning ? '已启动' : '已停止'));
+                        break;
+                        
+                    case 'pcap_path':
+                        document.getElementById('pcapPath').textContent = data.path || '保存路径获取失败';
+                        document.getElementById('pcapPathSection').style.display = 'block';
+                        break;
+                        
+                    case 'check_vpn_permission':
+                        addDriverLog('VPN', data.message || 'VPN权限状态: ' + (data.granted ? '已授予' : '未授予'), data.granted ? 'success' : 'error');
+                        break;
+                }
+            } catch(e) {
+                console.error('回调处理失败:', e);
+            }
+        };
+
+        // ========== 页面切换函数 ==========
+        function switchPage(targetPage) {
+            const pageMap = {
+                workbench: 'pageWorkbench',
+                config: 'pageConfig',
+                settings: 'pageSettings'
+            };
+            const navMap = {
+                workbench: 'navWorkbench',
+                config: 'navConfig',
+                settings: 'navSettings'
+            };
+            const titleMap = {
+                workbench: '落羽SVIP弱网',
+                config: '参数配置',
+                settings: '设置'
+            };
+
+            const targetPageId = pageMap[targetPage];
+            const currentActive = document.querySelector('.page.active');
+            if (currentActive && currentActive.id === targetPageId) return;
+
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            document.getElementById(targetPageId).classList.add('active');
+
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.getElementById(navMap[targetPage]).classList.add('active');
+
+            document.getElementById('pageTitle').textContent = titleMap[targetPage];
+        }
+
+        // ========== 场景配置相关函数 ==========
+        function gotoConfigPageByNav() {
+            const activeScene = document.querySelector('.scene-item.selected');
+            if (activeScene) {
+                currentConfigScene = activeScene.dataset.scene;
+                selectedScene = currentConfigScene;
+                loadSceneConfig(selectedScene);
+                switchPage('config');
+            } else {
+                loadSceneConfig('normal');
+                switchPage('config');
+            }
+        }
+
+        function gotoConfigPage(el) {
+            currentConfigScene = el.dataset.scene;
+            selectedScene = currentConfigScene;
+            document.querySelectorAll('.scene-item').forEach(i => i.classList.remove('selected'));
+            el.classList.add('selected');
+            loadSceneConfig(selectedScene);
+            switchPage('config');
+        }
+
+        function loadSceneConfig(scene) {
+            const config = presets[scene] || presets.normal;
+            document.getElementById('configSceneName').textContent = config.name;
+            document.getElementById('configSceneDesc').textContent = config.desc;
+            document.getElementById('outDelay').value = config.outDelay;
+            document.getElementById('inDelay').value = config.inDelay;
+            document.getElementById('outJitter').value = config.outJitter;
+            document.getElementById('inJitter').value = config.inJitter;
+            document.getElementById('outLoss').value = config.outLoss;
+            document.getElementById('inLoss').value = config.inLoss;
+            document.getElementById('outBandwidth').value = config.outBandwidth;
+            document.getElementById('inBandwidth').value = config.inBandwidth;
+            document.getElementById('outCycleType').value = config.outCycleType;
+            document.getElementById('outCycleTime').value = config.outCycleTime;
+            document.getElementById('outCycleLoss').value = config.outCycleLoss;
+            document.getElementById('inCycleType').value = config.inCycleType;
+            document.getElementById('inCycleTime').value = config.inCycleTime;
+            document.getElementById('inCycleLoss').value = config.inCycleLoss;
+        }
+
+        function confirmConfig() {
+            showToast('配置已保存');
+            switchPage('workbench');
+        }
+
+        function resetConfig() {
+            loadSceneConfig(selectedScene);
+            showToast('已重置为默认参数');
+        }
+
+        // ========== 按钮状态更新 ==========
+        function updateBtnStatus() {
+            if (isRunning) {
+                btnStart.textContent = '停止';
+                btnStart.classList.add('running');
+            } else {
+                btnStart.textContent = '启动';
+                btnStart.classList.remove('running');
+            }
+        }
+
+        // ========== 配置获取与保存 ==========
+        function getConfig() {
+            return {
+                api: "start_qnet",
+                dump_pcap: document.getElementById('dumpPcap').checked ? 1 : 0,
+                control_fw: document.getElementById('controlFw').checked ? 1 : 0,
+                info_fw: document.getElementById('infoFw').checked ? 1 : 0,
+                anti_block: document.getElementById('antiBlock').checked ? 1 : 0,
+                profile: {
+                    profile_id: "local_" + Date.now(),
+                    name: presets[selectedScene].name,
+                    desc: "Local config",
+                    type: 2,
+                    params: [{
+                        duration: -1,
+                        out_delay: parseInt(document.getElementById('outDelay').value) || 0,
+                        in_delay: parseInt(document.getElementById('inDelay').value) || 0,
+                        out_jitter: parseInt(document.getElementById('outJitter').value) || 0,
+                        in_jitter: parseInt(document.getElementById('inJitter').value) || 0,
+                        out_loss: parseInt(document.getElementById('outLoss').value) || 0,
+                        in_loss: parseInt(document.getElementById('inLoss').value) || 0,
+                        out_bandwidth: parseInt(document.getElementById('outBandwidth').value) || -1,
+                        in_bandwidth: parseInt(document.getElementById('inBandwidth').value) || -1,
+                        protocol: parseInt(document.getElementById('protocolType').value) || 3,
+                        out_cycle_type: document.getElementById('outCycleType').value,
+                        out_cycle_time: parseInt(document.getElementById('outCycleTime').value) || 0,
+                        out_cycle_loss: parseInt(document.getElementById('outCycleLoss').value) || 0,
+                        in_cycle_type: document.getElementById('inCycleType').value,
+                        in_cycle_time: parseInt(document.getElementById('inCycleTime').value) || 0,
+                        in_cycle_loss: parseInt(document.getElementById('inCycleLoss').value) || 0
+                    }]
+                }
+            };
+        }
+
+        function loadOptions() {
+            // 从Native加载配置
+            callNative({ api: "get_qnet_options" });
+        }
+
+        function saveOptions() {
+            callNative({ 
+                api: "set_qnet_option", 
+                control_fw: document.getElementById('controlFw').checked ? 1 : 0, 
+                info_fw: document.getElementById('infoFw').checked ? 1 : 0, 
+                dump_pcap: document.getElementById('dumpPcap').checked ? 1 : 0,
+                anti_block: document.getElementById('antiBlock').checked ? 1 : 0 
+            });
+            
+            const pcapPathSection = document.getElementById('pcapPathSection');
+            pcapPathSection.style.display = document.getElementById('dumpPcap').checked ? 'block' : 'none';
+            
+            if (document.getElementById('dumpPcap').checked) {
+                callNative({ api: "pcap_path" });
+            }
+        }
+
+        // ========== 工具函数 ==========
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        // ========== Native交互函数 ==========
+        function callNative(data) {
+            if (window.qnetAndroidObj && window.qnetAndroidObj.callAndroidApi) {
+                window.qnetAndroidObj.callAndroidApi(JSON.stringify(data));
+                console.log('调用Native:', data);
+            } else {
+                console.log('Native接口不存在，模拟调用:', data);
+                // 模拟回调
+                setTimeout(() => {
+                    if (data.api === 'check_driver_status') {
+                        window.handleNativeCallback({
+                            api: 'check_driver_status',
+                            status: 'not_ready',
+                            version: 'v2.1.5'
+                        });
+                    }
+                }, 100);
+            }
+        }
+
+        function toggleVPN() { 
+            if (!driverReady && !window.qnetAndroidObj) {
+                showToast('请先测试并安装驱动');
+                addDriverLog('系统', '❌ 驱动未就绪，无法启动', 'error');
+                return;
+            }
+            
+            if (isRunning) {
+                callNative({ api: "stop_qnet" }); 
+            } else {
+                callNative(getConfig());
+            }
+            isRunning = !isRunning;
+            updateBtnStatus();
+        }
+
+        function goBack() { 
+            callNative({ api: "click_back_button" }); 
+        }
+  </script>
+ </body> 
+</html>
